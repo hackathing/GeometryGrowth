@@ -8,6 +8,7 @@ public class Fractal : MonoBehaviour {
 	public int maxDepth;
 	public float childScale;
 	public float growthFrameTime;
+	public float spawnProbability;
 
 	private int depth;
 
@@ -34,27 +35,46 @@ public class Fractal : MonoBehaviour {
 
 	private IEnumerator CreateChildren () {
 		for (int i = 0; i < childDirections.Length; i++) {
-            yield return new WaitForSeconds(growthFrameTime);
-            new GameObject ("Fractal Child").AddComponent<Fractal> ().Initialize (this, i);
+			if (Random.value < spawnProbability) {
+				yield return new WaitForSeconds (growthFrameTime);
+				new GameObject ("Fractal Child").AddComponent<Fractal> ().Initialize (this, i);
+			}
 		}
 	}
 
 	private void Initialize (Fractal parent, int childIndex) {
+		spawnProbability = parent.spawnProbability;
 		mesh = parent.mesh;
 		material = parent.material;
 		maxDepth = parent.maxDepth;
+		growthFrameTime = parent.growthFrameTime;
 		depth = parent.depth + 1;
 		childScale = parent.childScale;
-	    growthFrameTime = parent.growthFrameTime;
 		transform.parent = parent.transform;
-		transform.localScale = Vector3.one * childScale;
-		transform.localPosition = childDirections[childIndex] * (0.5f + 0.5f * childScale);
+		transform.localPosition = childDirections[childIndex] * 0.5f;
 		transform.localRotation = childOrientations[childIndex];
+		StartCoroutine(scaleObject(childIndex));
+	}
+
+	private IEnumerator scaleObject(int childIndex) {
+		this.transform.localScale = Vector3.one * 0;
+		Vector3 destinationScale =(Vector3.one * childScale);
+
+		Vector3 destinationPosition = childDirections[childIndex] * (0.5f + 0.5f * childScale);
+		float time = 10.0f;
+		float currentTime = 0.0f;
+
+		do
+		{
+			this.transform.localScale = Vector3.Lerp(this.transform.localScale, destinationScale, currentTime / time);
+			this.transform.localPosition = Vector3.Lerp(this.transform.localPosition, destinationPosition, currentTime / time);
+			currentTime += Time.deltaTime;
+			yield return null;
+		} while (currentTime <= time);
 	}
 
 	// Update is called once per frame
 	void Update () {
-		
 
 	}
 }
