@@ -20,8 +20,15 @@ public class Fractal : MonoBehaviour {
 
 	private static Quaternion[] childOrientations = {
 		Quaternion.identity,
-		Quaternion.Euler(0f, 0f, -90f),
-		Quaternion.Euler(0f, 0f, 90f)
+		Quaternion.Euler(0f, 0f, -60f),
+		Quaternion.Euler(0f, 0f, 60f)
+	};
+
+	// This is a bit weird. This is to compensate for the parent scale
+	private static Vector3[] childScales = {
+		new Vector3(1f, 1f, 1f),
+		new Vector3(0.5f, 2f, 1f),
+		new Vector3(0.5f, 2f, 1f)
 	};
 
 	// Use this for initialization
@@ -58,7 +65,7 @@ public class Fractal : MonoBehaviour {
 
 	private IEnumerator scaleObject(int childIndex) {
 		this.transform.localScale = Vector3.one * 0;
-		Vector3 destinationScale =(Vector3.one * childScale);
+		Vector3 destinationScale = (childScales[childIndex] * childScale);
 
 		Vector3 destinationPosition = childDirections[childIndex] * (0.5f + 0.5f * childScale);
 		float time = 10.0f;
