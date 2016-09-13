@@ -33,8 +33,10 @@ public class Fractal : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		gameObject.AddComponent<MeshFilter>().mesh = mesh;
-		gameObject.AddComponent<MeshRenderer>().material = material;
+		var meshFilter = gameObject.AddComponent<MeshFilter>();
+	    meshFilter.mesh = mesh;
+	    var meshRenderer = gameObject.AddComponent<MeshRenderer>();
+        meshRenderer.material = material;
 		if (depth < maxDepth) {
 			StartCoroutine(CreateChildren());
 		}
