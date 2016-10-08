@@ -28,7 +28,6 @@ namespace Assets.Scripts
 
             if (gripButtonPress)
             {
-                Debug.Log("Press");
                 GrowTree(Controller.transform.pos);
             }
         }
@@ -36,6 +35,18 @@ namespace Assets.Scripts
         void GrowTree(Vector3 position)
         {
             Instantiate(PrefabToSpawn, position, Quaternion.identity);
+        }
+
+        void OnTriggerEnter(Collider col)
+        {
+            var seed = col.gameObject.GetComponent<Seed>();
+            seed.SetHighlight(true);
+        }
+
+        void OnTriggerExit(Collider col)
+        {
+            var seed = col.gameObject.GetComponent<Seed>();
+            seed.SetHighlight(false);
         }
     }
 }
