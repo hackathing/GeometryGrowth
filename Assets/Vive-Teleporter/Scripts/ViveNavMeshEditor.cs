@@ -89,7 +89,7 @@ public class ViveNavMeshEditor : Editor {
         {
             Undo.RecordObject(mesh, "Update Navmesh Data");
 
-            NavMeshTriangulation tri = NavMesh.CalculateTriangulation();
+            UnityEngine.AI.NavMeshTriangulation tri = UnityEngine.AI.NavMesh.CalculateTriangulation();
             int vert_size, tri_size;
             CullNavmeshTriangulation(ref tri, p_area.intValue, out vert_size, out tri_size);
 
@@ -146,7 +146,7 @@ public class ViveNavMeshEditor : Editor {
     /// \param area Area mask to include in returned mesh.  Areas outside of this mask are culled.
     /// \param vert_size New size of navMesh.vertices
     /// \param tri_size New size of navMesh.areas and one third of the size of navMesh.indices
-    private static void CullNavmeshTriangulation(ref NavMeshTriangulation navMesh, int area, out int vert_size, out int tri_size)
+    private static void CullNavmeshTriangulation(ref UnityEngine.AI.NavMeshTriangulation navMesh, int area, out int vert_size, out int tri_size)
     {
         // Step 1: re-order triangles so that valid areas are in front.  Then determine tri_size.
         tri_size = navMesh.indices.Length / 3;
@@ -218,7 +218,7 @@ public class ViveNavMeshEditor : Editor {
     /// \param navMesh Precalculated Nav Mesh Triangulation
     /// \param vert_size size of vertex array
     /// \param tri_size size of triangle array
-    private static Mesh ConvertNavmeshToMesh(NavMeshTriangulation navMesh, int vert_size, int tri_size)
+    private static Mesh ConvertNavmeshToMesh(UnityEngine.AI.NavMeshTriangulation navMesh, int vert_size, int tri_size)
     {
         Mesh ret = new Mesh();
 
