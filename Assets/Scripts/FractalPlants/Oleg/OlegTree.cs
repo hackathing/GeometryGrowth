@@ -9,7 +9,7 @@ public class OlegTree : MonoBehaviour {
   public float childScale;
   public float growthFrameTime;
   public float spawnProbability;
-  public float growthDuration;  // The growthDuration variable is not working as intended here
+  public float growthDuration;
 
   private int depth;
 
@@ -42,6 +42,8 @@ public class OlegTree : MonoBehaviour {
       StartCoroutine(CreateChildren());
     }
 
+    // growthDuration = 4f;
+
     // Debug.Log("growthDuration in Start");
     // Debug.Log(this);
     // Debug.Log(growthDuration);
@@ -53,17 +55,18 @@ public class OlegTree : MonoBehaviour {
       if (Random.value < spawnProbability) {
         yield return new WaitForSeconds (growthFrameTime);
 
-        new GameObject ("OlegTree Child").AddComponent<OlegTree> ().Initialize (this, growthDuration, i);
+        new GameObject ("OlegTree Child").AddComponent<OlegTree> ().Initialize (this, i);
       }
     }
   }
 
-  private void Initialize (OlegTree parent, float growthDuration, int childIndex) {
+  private void Initialize (OlegTree parent, int childIndex) {
     spawnProbability = parent.spawnProbability;
     mesh = parent.mesh;
     material = parent.material;
     maxDepth = parent.maxDepth;
     growthFrameTime = parent.growthFrameTime;
+    growthDuration = parent.growthDuration;
     depth = parent.depth + 1;
     childScale = parent.childScale;
     transform.parent = parent.transform;
@@ -71,13 +74,15 @@ public class OlegTree : MonoBehaviour {
     transform.localRotation = childOrientations[childIndex];
     // Debug.Log("growthDuration in Initialize");
     // Debug.Log(growthDuration);
-    StartCoroutine(scaleObject(childIndex, growthDuration));
+    StartCoroutine(scaleObject(childIndex));
   }
 
-  private IEnumerator scaleObject(int childIndex, float growthDuration) {
+  private IEnumerator scaleObject(int childIndex) {
+
+
 
     Vector3 initialScale = Vector3.one * 0;
-    // Vector3 initialPosition = this.transform.localPosition;
+    Vector3 initialPosition = this.transform.localPosition;
     
     this.transform.localScale = initialScale;
     Vector3 destinationScale = (childScales[childIndex] * childScale);
@@ -86,25 +91,19 @@ public class OlegTree : MonoBehaviour {
     // Debug.Log(this.transform.localScale);
     // Debug.Log(this.transform.localPosition);
 
-    float time = 10.0f;
     float currentTime = 0.0f;
-    
     do
     {
       // this.transform.localScale = Vector3.Lerp(this.transform.localScale, destinationScale, currentTime / time);
       // Debug.Log("growthDuration in scaleObject,");
       // Debug.Log(childIndex);
       // Debug.Log(growthDuration);
-      // this.transform.localScale = Growth.NewPosition(this.transform.localScale, initialScale, destinationScale, growthDuration);
+      this.transform.localScale = Growth.NewPosition(this.transform.localScale, initialScale, destinationScale, growthDuration);
+      this.transform.localPosition = Vector3.Lerp(this.transform.localPosition, destinationPosition, currentTime / growthDuration);
       // this.transform.localPosition = Growth.NewPosition(this.transform.localPosition, initialPosition, destinationPosition, growthDuration);
-
-      // The growthDuration variable is not working as intended here
-      this.transform.localScale = Vector3.Lerp(this.transform.localScale, destinationScale, currentTime / time);
-      this.transform.localPosition = Vector3.Lerp(this.transform.localPosition, destinationPosition, currentTime / time);
-      
       currentTime += Time.deltaTime;
       yield return null;
-    } while (currentTime <= time);
+    } while (currentTime <= currentTime);
   }
 
   // Update is called once per frame
