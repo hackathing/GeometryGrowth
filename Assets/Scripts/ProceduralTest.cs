@@ -1,8 +1,9 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-
+using Random = UnityEngine.Random;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -77,6 +78,8 @@ namespace Robbie
         public float BaseRadius = 2f; // Base radius in meters
         [Range(0.75f, 0.95f)]
         public float RadiusStep = 0.9f; // Controls how quickly radius decreases
+        [Range(0.25f, 0.95f)]
+        public float BranchRadiusStep = 0.9f; // Controls how quickly radius decreases for branches
         [Range(0.01f, 0.2f)]
         public float MinimumRadius = 0.02f; // Minimum radius for the tree's smallest branches
         [Range(0f, 1f)]
@@ -189,7 +192,7 @@ namespace Robbie
         {
             // Tree parameter checksum (add any new parameters here!)
             var newChecksum = (Seed & 0xFFFF) + NumberOfSides + SegmentLength + BaseRadius + MaxNumVertices +
-                RadiusStep + MinimumRadius + Twisting + BranchProbability + BranchRoundness;
+                RadiusStep + BranchRadiusStep + MinimumRadius + Twisting + BranchProbability + BranchRoundness;
 
             // Return (do nothing) unless tree parameters change
             if (newChecksum == checksum && filter.sharedMesh != null) return;
@@ -229,14 +232,16 @@ namespace Robbie
             public readonly int ParentRingVertexIndex;
             public readonly float Radius;
             public readonly float TexCoordV;
+            public readonly int RandomSeed;
 
-            public StepData(Quaternion quaternion, Vector3 position, int parentRingVertexIndex, float radius, float texCoordV)
+            public StepData(Quaternion quaternion, Vector3 position, int parentRingVertexIndex, float radius, float texCoordV, int randomSeed)
             {
                 Quaternion = quaternion;
                 Position = position;
                 ParentRingVertexIndex = parentRingVertexIndex;
                 Radius = radius;
                 TexCoordV = texCoordV;
+                RandomSeed = randomSeed;
             }
         }
 
@@ -249,7 +254,7 @@ namespace Robbie
             gameObject.isStatic = false;
 
             var originalRotation = transform.localRotation;
-            var originalSeed = Random.seed;
+            var originalState = Random.state;
 
             if (vertexList == null) // Create lists for holding generated vertices
             {
@@ -266,20 +271,17 @@ namespace Robbie
 
             SetTreeRingShape(); // Init shape array for current number of sides
 
-            Random.seed = Seed;
-
             // Main recursive call, starts creating the ring of vertices in the trunk's base
             var stepQueue = new Queue<StepData>();
-            stepQueue.Enqueue(new StepData(new Quaternion(), Vector3.zero, -1, BaseRadius, 0f));
+            stepQueue.Enqueue(new StepData(new Quaternion(), Vector3.zero, -1, BaseRadius, 0f, Seed));
 
             while (stepQueue.Count > 0)
             {
                 Branch(stepQueue.Dequeue(), stepQueue);
             }
 
-            Debug.Log(vertexList.Count + " vertices, " + uvList.Count + " uvs, " + triangleList.Count + " /3 triangles");
-
-            Random.seed = originalSeed;
+            Random.state = originalState;
+            Debug.Log(vertexList.Count + " vertices, " + uvList.Count + " uvs, " + triangleList.Count + "/3=" + triangleList.Count / 3 + " triangles");
 
             transform.localRotation = originalRotation; // Restore original object rotation
 
@@ -292,11 +294,12 @@ namespace Robbie
 
         private void SetTreeRingShape()
         {
+            Random.InitState(Seed);
+
             ringShape = new float[NumberOfSides + 1];
             var k = (1f - BranchRoundness) * 0.5f;
             // Randomize the vertex offsets, according to BranchRoundness
-            Random.seed = Seed;
-            for (var n = 0; n < NumberOfSides; n++) ringShape[n] = 1f - (Random.value - 0.5f) * k;
+            for (var n = 0; n < NumberOfSides; n++) ringShape[n] = 1f - ((float)Random.value - 0.5f) * k;
             ringShape[NumberOfSides] = ringShape[0];
         }
 
@@ -311,6 +314,8 @@ namespace Robbie
             var lastRingVertexIndex = stepData.ParentRingVertexIndex;
             var radius = stepData.Radius;
             var texCoordV = stepData.TexCoordV;
+            var randomSeed = stepData.RandomSeed;
+            Random.InitState(randomSeed);
 
             var offset = Vector3.zero;
             var texCoord = new Vector2(0f, texCoordV);
@@ -344,8 +349,8 @@ namespace Robbie
             }
 
             // Do we end current branch?
-            radius *= RadiusStep;
-            if (lastRingVertexIndex >= 0 && (radius < MinimumRadius || vertexList.Count + NumberOfSides >= MaxNumVertices)) // End branch if reached minimum radius, or ran out of vertices
+            var nextRadius = radius * RadiusStep;
+            if (lastRingVertexIndex >= 0 && (nextRadius < MinimumRadius || vertexList.Count + NumberOfSides >= MaxNumVertices)) // End branch if reached minimum radius, or ran out of vertices
             {
                 // Create a cap for ending the branch
                 vertexList.Add(position); // Add central vertex
@@ -360,14 +365,14 @@ namespace Robbie
             }
 
             // Continue current branch (randomizing the angle)
-            texCoordV += 0.0625f * (SegmentLength + SegmentLength / radius);
+            texCoordV += 0.0625f * (SegmentLength + SegmentLength / nextRadius);
             position += quaternion * new Vector3(0f, SegmentLength, 0f);
             transform.rotation = quaternion;
             var x = (Random.value - 0.5f) * Twisting;
             var z = (Random.value - 0.5f) * Twisting;
             transform.Rotate(x, 0f, z);
             lastRingVertexIndex = vertexList.Count - NumberOfSides - 1;
-            stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex, radius, texCoordV));
+            stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex, nextRadius, texCoordV, Random.Range(int.MinValue, int.MaxValue)));
 
             // Do we branch?
             if (vertexList.Count + NumberOfSides >= MaxNumVertices || Random.value > BranchProbability) return;
@@ -379,7 +384,7 @@ namespace Robbie
             z = Random.value * 70f - 35f;
             z += z > 0 ? 10f : -10f;
             transform.Rotate(x, 0f, z);
-            stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex, radius, texCoordV));
+            stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex, radius * BranchRadiusStep, texCoordV, Random.Range(int.MinValue, int.MaxValue)));
         }
     }
 }
