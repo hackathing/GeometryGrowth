@@ -377,14 +377,20 @@ namespace Robbie
             // Do we branch?
             if (vertexList.Count + NumberOfSides >= MaxNumVertices || Random.value > BranchProbability) return;
 
-            // Yes, add a new branch
-            transform.rotation = quaternion;
-            x = Random.value * 70f - 35f;
-            x += x > 0 ? 10f : -10f;
-            z = Random.value * 70f - 35f;
-            z += z > 0 ? 10f : -10f;
-            transform.Rotate(x, 0f, z);
-            stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex, radius * BranchRadiusStep, texCoordV, Random.Range(int.MinValue, int.MaxValue)));
+            var nextBranchRadius = radius*BranchRadiusStep;
+
+            if (nextBranchRadius >= MinimumRadius && vertexList.Count + NumberOfSides < MaxNumVertices)
+            {
+                // Yes, add a new branch
+                transform.rotation = quaternion;
+                x = Random.value*70f - 35f;
+                x += x > 0 ? 10f : -10f;
+                z = Random.value*70f - 35f;
+                z += z > 0 ? 10f : -10f;
+                transform.Rotate(x, 0f, z);
+                stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex,
+                radius*BranchRadiusStep, texCoordV, Random.Range(int.MinValue, int.MaxValue)));
+            }
         }
     }
 }
