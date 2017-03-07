@@ -99,7 +99,8 @@ namespace Robbie
 
         List<Vector3> vertexList; // Vertex list
         List<Vector2> uvList; // UV list
-        List<int> triangleList; // Triangle list
+        List<int> treeTriangleList; // Triangle list
+        List<int> leafTriangleList; // Triangle list
 
         float[] ringShape; // Tree ring shape array
 
@@ -143,10 +144,13 @@ namespace Robbie
             else
                 mesh.Clear();
 
+            mesh.subMeshCount = 2;
+
             // Assign vertex data
-            mesh.vertices = vertexList.ToArray();
-            mesh.uv = uvList.ToArray();
-            mesh.triangles = triangleList.ToArray();
+            mesh.SetVertices(vertexList);
+            mesh.SetUVs(0, uvList);
+            mesh.SetTriangles(treeTriangleList, 0);
+            mesh.SetTriangles(leafTriangleList, 1);
 
             // Update mesh
             mesh.RecalculateNormals();
@@ -154,7 +158,7 @@ namespace Robbie
             ; // Do not call this if we are going to change the mesh dynamically!
 
 #if UNITY_EDITOR
-            MeshInfo = "Mesh has " + vertexList.Count + " vertices and " + triangleList.Count / 3 + " triangles";
+            MeshInfo = "Mesh has " + vertexList.Count + " vertices and " + treeTriangleList.Count / 3 + " triangles";
 #endif
         }
 
@@ -260,13 +264,15 @@ namespace Robbie
             {
                 vertexList = new List<Vector3>();
                 uvList = new List<Vector2>();
-                triangleList = new List<int>();
+                treeTriangleList = new List<int>();
+                leafTriangleList = new List<int>();
             }
             else // Clear lists for holding generated vertices
             {
                 vertexList.Clear();
                 uvList.Clear();
-                triangleList.Clear();
+                treeTriangleList.Clear();
+                leafTriangleList.Clear();
             }
 
             SetTreeRingShape(); // Init shape array for current number of sides
@@ -281,7 +287,7 @@ namespace Robbie
             }
 
             Random.state = originalState;
-            Debug.Log(vertexList.Count + " vertices, " + uvList.Count + " uvs, " + triangleList.Count + "/3=" + triangleList.Count / 3 + " triangles");
+            Debug.Log(vertexList.Count + " vertices, " + uvList.Count + " uvs, " + treeTriangleList.Count / 3 + " tree triangles, " + leafTriangleList.Count / 3 + " leaf triangles, " + (treeTriangleList.Count + leafTriangleList.Count) / 3 + " total triangles");
 
             transform.localRotation = originalRotation; // Restore original object rotation
 
@@ -299,7 +305,7 @@ namespace Robbie
             ringShape = new float[NumberOfSides + 1];
             var k = (1f - BranchRoundness) * 0.5f;
             // Randomize the vertex offsets, according to BranchRoundness
-            for (var n = 0; n < NumberOfSides; n++) ringShape[n] = 1f - ((float)Random.value - 0.5f) * k;
+            for (var n = 0; n < NumberOfSides; n++) ringShape[n] = 1f - (Random.value - 0.5f) * k;
             ringShape[NumberOfSides] = ringShape[0];
         }
 
@@ -339,12 +345,12 @@ namespace Robbie
                 // Create new branch segment quads, between last two vertex rings
                 for (var currentRingVertexIndex = vertexList.Count - NumberOfSides - 1; currentRingVertexIndex < vertexList.Count - 1; currentRingVertexIndex++, lastRingVertexIndex++)
                 {
-                    triangleList.Add(lastRingVertexIndex + 1); // Triangle A
-                    triangleList.Add(lastRingVertexIndex);
-                    triangleList.Add(currentRingVertexIndex);
-                    triangleList.Add(currentRingVertexIndex); // Triangle B
-                    triangleList.Add(currentRingVertexIndex + 1);
-                    triangleList.Add(lastRingVertexIndex + 1);
+                    treeTriangleList.Add(lastRingVertexIndex + 1); // Triangle A
+                    treeTriangleList.Add(lastRingVertexIndex);
+                    treeTriangleList.Add(currentRingVertexIndex);
+                    treeTriangleList.Add(currentRingVertexIndex); // Triangle B
+                    treeTriangleList.Add(currentRingVertexIndex + 1);
+                    treeTriangleList.Add(lastRingVertexIndex + 1);
                 }
             }
 
@@ -357,10 +363,32 @@ namespace Robbie
                 uvList.Add(texCoord + Vector2.one); // Twist UVs to get rings effect
                 for (var n = vertexList.Count - NumberOfSides - 2; n < vertexList.Count - 2; n++) // Add cap
                 {
-                    triangleList.Add(n);
-                    triangleList.Add(vertexList.Count - 1);
-                    triangleList.Add(n + 1);
+                    treeTriangleList.Add(n);
+                    treeTriangleList.Add(vertexList.Count - 1);
+                    treeTriangleList.Add(n + 1);
                 }
+
+                // Create a leaf at the end
+                vertexList.Add(position);
+                uvList.Add(Vector2.zero);
+                vertexList.Add(position + quaternion * new Vector3(SegmentLength / 2, SegmentLength / 2, 0f));
+                uvList.Add(Vector2.right);
+                vertexList.Add(position + quaternion * new Vector3(0f, SegmentLength, 0f));
+                uvList.Add(Vector2.one);
+                vertexList.Add(position + quaternion * new Vector3(- SegmentLength / 2, SegmentLength / 2, 0f));
+                uvList.Add(Vector2.up);
+                leafTriangleList.Add(vertexList.Count - 1);
+                leafTriangleList.Add(vertexList.Count - 2);
+                leafTriangleList.Add(vertexList.Count - 3);
+                leafTriangleList.Add(vertexList.Count - 3);
+                leafTriangleList.Add(vertexList.Count - 4);
+                leafTriangleList.Add(vertexList.Count - 1);
+                leafTriangleList.Add(vertexList.Count - 1);
+                leafTriangleList.Add(vertexList.Count - 4);
+                leafTriangleList.Add(vertexList.Count - 3);
+                leafTriangleList.Add(vertexList.Count - 3);
+                leafTriangleList.Add(vertexList.Count - 2);
+                leafTriangleList.Add(vertexList.Count - 1);
                 return;
             }
 
