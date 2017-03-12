@@ -90,6 +90,8 @@ namespace Robbie
         public float Twisting = 20f; // How much branches twist
         [Range(0f, 0.25f)]
         public float BranchProbability = 0.1f; // Branch probability
+		[Range(0, 16)]
+		public int MaximumDepth = 8; // Branch probability
 
         // ---------------------------------------------------------------------------------------------------------------------------
 
@@ -196,7 +198,7 @@ namespace Robbie
         {
             // Tree parameter checksum (add any new parameters here!)
             var newChecksum = (Seed & 0xFFFF) + NumberOfSides + SegmentLength + BaseRadius + MaxNumVertices +
-                RadiusStep + BranchRadiusStep + MinimumRadius + Twisting + BranchProbability + BranchRoundness;
+				RadiusStep + BranchRadiusStep + MinimumRadius + Twisting + BranchProbability + BranchRoundness + MaximumDepth;
 
             // Return (do nothing) unless tree parameters change
             if (newChecksum == checksum && filter.sharedMesh != null) return;
@@ -237,15 +239,24 @@ namespace Robbie
             public readonly float Radius;
             public readonly float TexCoordV;
             public readonly int RandomSeed;
+			public readonly int CurrentDepth;
 
-            public StepData(Quaternion quaternion, Vector3 position, int parentRingVertexIndex, float radius, float texCoordV, int randomSeed)
-            {
+            public StepData(
+				Quaternion quaternion,
+				Vector3 position,
+				int parentRingVertexIndex,
+				float radius,
+				float texCoordV,
+				int randomSeed,
+				int currentDepth
+			) {
                 Quaternion = quaternion;
                 Position = position;
                 ParentRingVertexIndex = parentRingVertexIndex;
                 Radius = radius;
                 TexCoordV = texCoordV;
                 RandomSeed = randomSeed;
+				CurrentDepth = currentDepth;
             }
         }
 
@@ -279,7 +290,7 @@ namespace Robbie
 
             // Main recursive call, starts creating the ring of vertices in the trunk's base
             var stepQueue = new Queue<StepData>();
-            stepQueue.Enqueue(new StepData(new Quaternion(), Vector3.zero, -1, BaseRadius, 0f, Seed));
+            stepQueue.Enqueue(new StepData(new Quaternion(), Vector3.zero, -1, BaseRadius, 0f, Seed, 0));
 
             while (stepQueue.Count > 0)
             {
@@ -321,6 +332,7 @@ namespace Robbie
             var radius = stepData.Radius;
             var texCoordV = stepData.TexCoordV;
             var randomSeed = stepData.RandomSeed;
+			var currentDepth = stepData.CurrentDepth;
             Random.InitState(randomSeed);
 
             var offset = Vector3.zero;
@@ -400,14 +412,14 @@ namespace Robbie
             var z = (Random.value - 0.5f) * Twisting;
             transform.Rotate(x, 0f, z);
             lastRingVertexIndex = vertexList.Count - NumberOfSides - 1;
-            stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex, nextRadius, texCoordV, Random.Range(int.MinValue, int.MaxValue)));
+			stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex, nextRadius, texCoordV, Random.Range(int.MinValue, int.MaxValue), currentDepth));
 
             // Do we branch?
             if (vertexList.Count + NumberOfSides >= MaxNumVertices || Random.value > BranchProbability) return;
 
             var nextBranchRadius = radius*BranchRadiusStep;
 
-            if (nextBranchRadius >= MinimumRadius && vertexList.Count + NumberOfSides < MaxNumVertices)
+			if (nextBranchRadius >= MinimumRadius && vertexList.Count + NumberOfSides < MaxNumVertices && currentDepth < MaximumDepth)
             {
                 // Yes, add a new branch
                 transform.rotation = quaternion;
@@ -417,7 +429,7 @@ namespace Robbie
                 z += z > 0 ? 10f : -10f;
                 transform.Rotate(x, 0f, z);
                 stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex,
-                radius*BranchRadiusStep, texCoordV, Random.Range(int.MinValue, int.MaxValue)));
+					radius*BranchRadiusStep, texCoordV, Random.Range(int.MinValue, int.MaxValue), currentDepth + 1));
             }
         }
     }
