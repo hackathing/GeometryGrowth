@@ -87,7 +87,9 @@ namespace Robbie
         [Range(0.1f, 2f)]
         public float SegmentLength = 0.5f; // Length of branch segments
         [Range(0f, 40f)]
-        public float Twisting = 20f; // How much branches twist
+        public float BranchTwisting = 20f; // How much branches twist
+		[Range(0f, 40f)]
+		public float TrunkTwisting = 20f; // How much trunk twists
         [Range(0f, 0.25f)]
         public float BranchProbability = 0.1f; // Branch probability
 		[Range(0, 16)]
@@ -198,7 +200,7 @@ namespace Robbie
         {
             // Tree parameter checksum (add any new parameters here!)
             var newChecksum = (Seed & 0xFFFF) + NumberOfSides + SegmentLength + BaseRadius + MaxNumVertices +
-				RadiusStep + BranchRadiusStep + MinimumRadius + Twisting + BranchProbability + BranchRoundness + MaximumDepth;
+				RadiusStep + BranchRadiusStep + MinimumRadius + BranchTwisting + TrunkTwisting + BranchProbability + BranchRoundness + MaximumDepth;
 
             // Return (do nothing) unless tree parameters change
             if (newChecksum == checksum && filter.sharedMesh != null) return;
@@ -408,8 +410,9 @@ namespace Robbie
             texCoordV += 0.0625f * (SegmentLength + SegmentLength / nextRadius);
             position += quaternion * new Vector3(0f, SegmentLength, 0f);
             transform.rotation = quaternion;
-            var x = (Random.value - 0.5f) * Twisting;
-            var z = (Random.value - 0.5f) * Twisting;
+			var twistingFactor = currentDepth == 0 ? TrunkTwisting : BranchTwisting;
+			var x = (Random.value - 0.5f) * twistingFactor;
+			var z = (Random.value - 0.5f) * twistingFactor;
             transform.Rotate(x, 0f, z);
             lastRingVertexIndex = vertexList.Count - NumberOfSides - 1;
 			stepDataQueue.Enqueue(new StepData(transform.rotation, position, lastRingVertexIndex, nextRadius, texCoordV, Random.Range(int.MinValue, int.MaxValue), currentDepth));
